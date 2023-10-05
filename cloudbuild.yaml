@@ -1,0 +1,32 @@
+steps:
+  - name: bash
+    secretEnv: ['MVN_SETTINGS']
+    script: |
+      #!/usr/bin/env bash
+      mkdir -p /workspace/.m2
+      echo "$MVN_SETTINGS" > /workspace/.m2/settings.xml
+  - name: gcr.io/k8s-skaffold/pack
+    entrypoint: pack
+    args:
+      - build
+      - '$_DEPLOY_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_SERVICE_NAME:$COMMIT_SHA'
+      - --builder
+      - gcr.io/buildpacks/builder:latest
+      - --env
+      - 'GOOGLE_BUILD_ARGS=--settings /workspace/.m2/settings.xml'
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - '$_DEPLOY_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_SERVICE_NAME:$COMMIT_SHA'
+
+images: ['$_DEPLOY_REGION-docker.pkg.dev/$PROJECT_ID/$_REPOSITORY/$_SERVICE_NAME:$COMMIT_SHA']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_NUMBER/secrets/${name-of-your-secret}/versions/latest
+      env: 'MVN_SETTINGS'
+
+substitutions:
+  _DEPLOY_REGION: europe-west3
+  _REPOSITORY: your-repository
+  _SERVICE_NAME: your-service
